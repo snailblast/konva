@@ -5,10 +5,10 @@
 })(this, (function () { 'use strict';
 
   /*
-   * Konva JavaScript Framework v8.3.2-3
+   * Konva JavaScript Framework v8.3.2-5
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Thu Feb 24 2022
+   * Date: Wed Mar 02 2022
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -35,7 +35,7 @@
               : {};
   const Konva$2 = {
       _global: glob,
-      version: '8.3.2-3',
+      version: '8.3.2-5',
       isBrowser: detectBrowser(),
       isUnminified: /param/.test(function (param) { }.toString()),
       dblClickWindow: 400,
@@ -13919,7 +13919,7 @@
           const measureParts = (parts) => {
               return parts.reduce((size, part) => {
                   part.width = this.measurePart(part);
-                  return size + part.width;
+                  return size + part.width + part.text.length * this.letterSpacing();
               }, 0);
           };
           const measureHeightParts = (parts) => {
@@ -13937,7 +13937,7 @@
                   width,
                   parts: parts.map((part) => {
                       // compute size if not already computed during part creation
-                      part.width = part.width === 0 ? this.measurePart(part) : part.width;
+                      part.width = part.width === 0 ? this.measurePart(part) + part.text.length * this.letterSpacing() : part.width;
                       return part;
                   }),
                   totalHeight: height
@@ -14080,7 +14080,7 @@
        * on canvas
        */
       _sceneFunc(context) {
-          if (this.text().length === 0) {
+          if (this.text().length === 0 || this.textLines.length === 0) {
               return;
           }
           const totalWidth = this.getWidth();
@@ -14097,6 +14097,9 @@
               alignY = totalHeight - this.linesHeight - padding * 2;
           }
           context.translate(padding, alignY + padding);
+          if (this.textLines.length == 0) {
+              return;
+          }
           let y = this.textLines[0].totalHeight / 2;
           let lineIndex = 0;
           for (const line of this.textLines) {
@@ -14109,7 +14112,7 @@
                   lineX += totalWidth - line.width - padding * 2;
               }
               else if (this.align() === 'center') {
-                  lineY += (totalWidth - line.width - padding * 2) / 2;
+                  lineX += (totalWidth - line.width - padding * 2) / 2;
               }
               for (const part of line.parts) {
                   // style
@@ -14146,6 +14149,7 @@
                       context.restore();
                   }
                   this.fill(part.style.fill);
+                  this.strokeWidth(part.style.strokeWidth);
                   this.stroke(part.style.stroke);
                   context.setAttr('font', this.formatFont(part));
                   // text
@@ -14371,6 +14375,7 @@
       start: 0,
       fill: 'black',
       stroke: 'black',
+      strokeWidth: 0,
       fontFamily: 'Arial',
       fontSize: 12,
       fontStyle: 'normal',
