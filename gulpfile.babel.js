@@ -42,9 +42,9 @@ gulp.task('pre-build', function () {
   return build()
     .pipe(rename('konva.js'))
     .pipe(gulp.dest('./'))
-    .pipe(
-      uglify.default({ output: { comments: /^!|@preserve|@license|@cc_on/i } })
-    )
+    // .pipe(
+    //   uglify.default({ output: { comments: /^!|@preserve|@license|@cc_on/i } })
+    // )
     .on('error', function (err) {
       gutil.log(gutil.colors.red('[Error]'), err.toString());
     })

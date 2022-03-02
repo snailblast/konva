@@ -1,7 +1,15 @@
 {
-  "name": "konva",
-  "version": "8.3.2",
+  "name": "@snailblast/konva",
+  "version": "8.3.2-4",
   "author": "Anton Lavrenov",
+  "description": "Forked Konva",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/snailblast"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/snailblast/konva"
+  },
   "files": [
     "README.md",
     "konva.js",
@@ -15,17 +23,17 @@
   "type": "module",
   "scripts": {
     "start": "npm run test:watch",
-    "compile": "npm run clean && npm run tsc && cp ./src/index-types.d.ts ./lib/index-types.d.ts && npm run rollup && cp ./package-cmj.json ./cmj/package.json && cp ./src/index-types.d.ts ./cmj/index-types.d.ts",
-    "build": "npm run compile && cp ./src/index-types.d.ts ./lib && gulp build && node ./rename-imports.mjs",
+    "compile": "npm run clean && npm run tsc && copy src\\index-types.d.ts lib\\index-types.d.ts && npm run rollup && copy package-cmj.json cmj\\package.json && copy src\\index-types.d.ts cmj\\index-types.d.ts",
+    "build": "npm run compile && copy src\\index-types.d.ts lib && gulp build && node --experimental-modules rename-imports.mjs",
     "test:import": "npm run build  && node ./test/import-test.cjs &&node ./test/import-test.mjs",
     "test": "npm run test:browser && npm run test:node",
     "test:build": "parcel build ./test/unit-tests.html --dist-dir test-build --target none --public-url ./ --no-source-maps",
     "test:browser": "npm run test:build && mocha-headless-chrome -f ./test-build/unit-tests.html -a disable-web-security",
     "test:node": "env TS_NODE_PROJECT=\"./test/tsconfig.json\" mocha -r ts-node/register test/unit/**/*.ts --exit && npm run test:import",
-    "test:watch": "rm -rf ./parcel-cache && parcel serve ./test/unit-tests.html ./test/manual-tests.html ./test/sandbox.html",
+    "test:watch": "del parcel-cache && parcel serve ./test/unit-tests.html ./test/manual-tests.html ./test/sandbox.html",
     "tsc": "tsc --removeComments && tsc --build ./tsconfig-cmj.json",
     "rollup": "rollup -c",
-    "clean": "rm -rf ./lib && rm -rf ./types && rm -rf ./cmj && rm -rf ./test-build",
+    "clean": "del lib && del types && del cmj && del test-build",
     "watch": "rollup -c -w",
     "size": "size-limit"
   },
@@ -60,6 +68,9 @@
     }
   ],
   "devDependencies": {
+    "@babel/core": "^7.17.5",
+    "@babel/preset-env": "^7.16.11",
+    "@babel/register": "^7.17.0",
     "@parcel/transformer-image": "2.0.0-beta.2",
     "@size-limit/preset-big-lib": "^5.0.4",
     "@types/mocha": "^9.0.0",
@@ -104,9 +115,5 @@
   },
   "homepage": "http://konvajs.org/",
   "readmeFilename": "README.md",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/konvajs/konva.git"
-  },
   "license": "MIT"
 }
