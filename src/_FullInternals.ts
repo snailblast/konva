@@ -17,7 +17,7 @@ import { Ring } from './shapes/Ring';
 import { Sprite } from './shapes/Sprite';
 import { Star } from './shapes/Star';
 import { Text } from './shapes/Text';
-import { MultiStyledText } from './shapes/MultiStyledText';
+import { RichText } from './shapes/RichText';
 import { TextPath } from './shapes/TextPath';
 import { Transformer } from './shapes/Transformer';
 import { Wedge } from './shapes/Wedge';
@@ -60,7 +60,7 @@ export const Konva = Core.Util._assign(Core, {
   Star,
   Text,
   TextPath,
-  MultiStyledText,
+  RichText,
   Transformer,
   Wedge,
   /**

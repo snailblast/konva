@@ -1,19 +1,64 @@
-import { Context } from '../Context'
-import { Factory } from '../Factory'
-import { _registerNode } from '../Global'
-import { Shape, ShapeConfig } from '../Shape'
-import { GetSet } from '../types'
-import { Util } from '../Util'
-import { getNumberOrAutoValidator, getNumberValidator, getBooleanValidator, getStringValidator } from '../Validators'
+import { Util } from '../Util';
+// import { Context } from '../Context'
+import { Factory } from '../Factory';
+import { Shape, ShapeConfig } from '../Shape';
+import { getNumberValidator, getStringValidator, getNumberOrAutoValidator, getBooleanValidator } from '../Validators';
+import { _registerNode } from '../Global';
 
-let dummyContext: Context & CanvasRenderingContext2D
-function getDummyContext() {
-  if (dummyContext) {
-    return dummyContext
-  }
-  dummyContext = Util.createCanvasElement().getContext('2d') as any
-  return dummyContext
+import { GetSet } from '../types';
+
+export interface RichTextConfig extends ShapeConfig {
+  text?: string;
+  textStyles?: TextStyle[]
+  align?: string;
+  verticalAlign?: string;
+  padding?: number;
+  lineHeight?: number;
+  letterSpacing?: number;
+  wrap?: string;
+  ellipsis?: boolean;
 }
+
+// constants
+var AUTO = 'auto',
+  //CANVAS = 'canvas',
+  CENTER = 'center',
+  JUSTIFY = 'justify',
+  CHANGE_KONVA = 'Change.konva',
+  CONTEXT_2D = '2d',
+  DASH = '-',
+  LEFT = 'left',
+  RICH_TEXT = 'richtext',
+  RICH_TEXT_UPPER = 'RichText',
+  TOP = 'top',
+  BOTTOM = 'bottom',
+  MIDDLE = 'middle',
+  NORMAL = 'normal',
+  PX_SPACE = 'px ',
+  SPACE = ' ',
+  RIGHT = 'right',
+  WORD = 'word',
+  CHAR = 'char',
+  NONE = 'none',
+  ELLIPSIS = '…',
+  ATTR_CHANGE_LIST = [
+    'fontFamily',
+    'fontSize',
+    'fontStyle',
+    'fontVariant',
+    'padding',
+    'align',
+    'verticalAlign',
+    'lineHeight',
+    'text',
+    'width',
+    'height',
+    'wrap',
+    'ellipsis',
+    'letterSpacing',
+  ],
+  // cached variables
+  attrChangeListLen = ATTR_CHANGE_LIST.length;
 
 function normalizeFontFamily(fontFamily: string) {
   return fontFamily
@@ -30,6 +75,22 @@ function normalizeFontFamily(fontFamily: string) {
     .join(', ');
 }
 
+var dummyContext;
+function getDummyContext() {
+  if (dummyContext) {
+    return dummyContext;
+  }
+  dummyContext = Util.createCanvasElement().getContext(CONTEXT_2D);
+  return dummyContext;
+}
+
+function _fillFunc(context) {
+  context.fillText(this.drawState.text, this.drawState.x, this.drawState.y);
+}
+function _strokeFunc(context) {
+  context.strokeText(this.drawState.text, this.drawState.x, this.drawState.y, undefined);
+}
+
 export interface TextStyle {
   start: number // start position of the style
   end?: number // end position of the style, if undefined it means until the end
@@ -39,7 +100,8 @@ export interface TextStyle {
   fontVariant: 'normal' | 'small-caps'
   textDecoration: '' | 'underline' | 'line-through' | 'underline line-through'
   fill: string
-  stroke: string
+  stroke: string,
+  strokeWidth: number
 }
 
 type TextPart = {
@@ -48,48 +110,31 @@ type TextPart = {
   style: Omit<TextStyle, 'start' | 'end'>
 }
 
-export interface MultiStyledTextConfig extends ShapeConfig {
-  text?: string;
-  textStyles?: TextStyle[]
-  align?: string;
-  verticalAlign?: string;
-  padding?: number;
-  lineHeight?: number;
-  letterSpacing?: number;
-  wrap?: string;
-  ellipsis?: boolean;
+function checkDefaultFill(config) {
+  config = config || {};
+  return config;
 }
 
-export class MultiStyledText extends Shape<MultiStyledTextConfig> {
-  public className = 'MultiStyledText'
 
-  public align!: GetSet<'left' | 'center' | 'right' | 'justify', this>
-  public letterSpacing!: GetSet<number, this>
-  public verticalAlign!: GetSet<'top' | 'middle' | 'bottom', this>
-  public padding!: GetSet<number, this>
-  public lineHeight!: GetSet<number, this>
-  public text!: GetSet<string, this>
-  public textStyles!: GetSet<TextStyle[], this>
-  public wrap!: GetSet<'word' | 'char' | 'none', this>
-  public ellipsis!: GetSet<boolean, this>
 
-  private textLines: {
+export class RichText extends Shape<RichTextConfig> {
+  textLines: {
     width: number
     totalHeight: number
     parts: TextPart[]
   }[] = []
-  private linesWidth!: number
-  private linesHeight!: number
+  linesWidth!: number
+  linesHeight!: number
 
   // used when drawing
-  private drawState!: {
+  drawState!: {
     x: number
     y: number
     text: string
   }
 
-  constructor(config?: MultiStyledTextConfig) {
-    super(config)
+  constructor(config?: RichTextConfig) {
+    super(checkDefaultFill(config));
     // update text data for certain attr changes
     for (const attr of [
       'padding', 'wrap', 'lineHeight', 'letterSpacing', 'textStyles', 'width', 'height', 'text'
@@ -99,11 +144,11 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
     this.computeTextParts()
   }
 
-  private formatFont (part: Pick<TextPart, 'style'>) {
+  formatFont(part: Pick<TextPart, 'style'>) {
     return `${part.style.fontStyle} ${part.style.fontVariant} ${part.style.fontSize}px ${normalizeFontFamily(part.style.fontFamily)}`
   }
 
-  private measurePart (part: Omit<TextPart, 'width'>) {
+  measurePart(part: Omit<TextPart, 'width'>) {
     const context = getDummyContext()
     context.save()
     context.font = this.formatFont(part)
@@ -112,7 +157,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
     return width
   }
 
-  private computeTextParts () {
+  computeTextParts() {
     this.textLines = []
     const lines = this.text().split('\n')
     const maxWidth = this.attrs.width
@@ -135,7 +180,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
     })
     const findParts = (start: number, end: number) => {
       // find matching characters
-      const chars = stylesByChar.slice(start, end)
+      const chars = stylesByChar.filter(x => x.char != '\n').slice(start, end)
       // group them by style
       const parts: TextPart[] = []
       for (const char of chars) {
@@ -154,7 +199,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
     const measureParts = (parts: TextPart[]) => {
       return parts.reduce((size, part) => {
         part.width = this.measurePart(part)
-        return size + part.width
+        return size + part.width + part.text.length * this.letterSpacing()
       }, 0)
     }
     const measureHeightParts = (parts: TextPart[]) => {
@@ -172,7 +217,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
         width,
         parts: parts.map((part) => {
           // compute size if not already computed during part creation
-          part.width = part.width === 0 ? this.measurePart(part) : part.width
+          part.width = part.width === 0 ? this.measurePart(part) + part.text.length * this.letterSpacing() : part.width
           return part
         }),
         totalHeight: height
@@ -267,7 +312,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
                 * stop wrapping if wrapping is disabled or if adding
                 * one more line would overflow the fixed height
                 */
-             break
+              break
             }
             line = line.slice(low)
             cursor += low
@@ -281,6 +326,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
                 const height = measureHeightParts(parts)
                 addLine(lineWidth, height, parts)
                 currentHeight += height
+                charCount += cursor;
                 break
               }
             }
@@ -293,6 +339,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
         const parts = findParts(charCount, charCount + line.length)
         lineHeight = measureHeightParts(parts)
         addLine(lineWidth, lineHeight, parts)
+        currentHeight += lineHeight;
       }
 
       // if element height is fixed, abort if adding one more line would overflow
@@ -302,14 +349,13 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
       }
 
       charCount += line.length
-      currentHeight += lineHeight!
     }
 
     this.linesHeight = this.textLines.reduce((size, line) => size + line.totalHeight, 0)
     this.linesWidth = Math.max(...this.textLines.map((line) => line.width, 0))
   }
 
-  public getHeight (): number {
+  getHeight(): number {
     const isAuto = this.attrs.height === 'auto' || this.attrs.height === undefined
     if (!isAuto) {
       return this.attrs.height
@@ -317,7 +363,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
     return this.linesHeight + this.padding() * 2
   }
 
-  public getWidth (): number {
+  getWidth(): number {
     const isAuto = this.attrs.width === 'auto' || this.attrs.width === undefined
     if (!isAuto) {
       return this.attrs.width
@@ -329,8 +375,8 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
    * @description This method is called when the shape should render
    * on canvas
    */
-  protected _sceneFunc(context: Context & CanvasRenderingContext2D) {
-    if (this.text().length === 0) {
+  _sceneFunc(context) {
+    if (this.text().length === 0 || this.textLines.length === 0) {
       return
     }
 
@@ -349,7 +395,9 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
       alignY = totalHeight - this.linesHeight - padding * 2;
     }
     context.translate(padding, alignY + padding)
-
+    if (this.textLines.length == 0) {
+      return;
+    }
     let y = this.textLines[0].totalHeight / 2
     let lineIndex = 0
     for (const line of this.textLines) {
@@ -362,7 +410,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
       if (this.align() === 'right') {
         lineX += totalWidth - line.width - padding * 2
       } else if (this.align() === 'center') {
-        lineY += (totalWidth - line.width - padding * 2) / 2
+        lineX += (totalWidth - line.width - padding * 2) / 2
       }
 
       for (const part of line.parts) {
@@ -415,6 +463,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
         }
 
         this.fill(part.style.fill)
+        this.strokeWidth(part.style.strokeWidth);
         this.stroke(part.style.stroke)
         context.setAttr('font', this.formatFont(part))
 
@@ -455,27 +504,7 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
     }
   }
 
-  /**
-   * @description This method is called by context.fillStrokeShape(this)
-   * to fill the shape
-   */
-  public _fillFunc = (context: Context) => {
-    context.fillText(this.drawState.text, this.drawState.x, this.drawState.y)
-  }
-
-  /**
-   * @description This method is called by context.fillStrokeShape(this)
-   * to stroke the shape
-   */
-  public _strokeFunc = (context: Context) => {
-    context.strokeText(this.drawState.text, this.drawState.x, this.drawState.y, undefined)
-  }
-
-  /**
-   * @description This method should render on canvas a rect with
-   * the width and the height of the text shape
-   */
-  protected _hitFunc(context: Context & CanvasRenderingContext2D) {
+  _hitFunc(context) {
     context.beginPath()
     context.rect(0, 0, this.getWidth(), this.getHeight())
     context.closePath()
@@ -484,11 +513,34 @@ export class MultiStyledText extends Shape<MultiStyledTextConfig> {
 
   // for text we can't disable stroke scaling
   // if we do, the result will be unexpected
-  public getStrokeScaleEnabled() {
+  getStrokeScaleEnabled() {
     return true
   }
+
+  align!: GetSet<'left' | 'center' | 'right' | 'justify', this>
+  letterSpacing!: GetSet<number, this>
+  verticalAlign!: GetSet<'top' | 'middle' | 'bottom', this>
+  padding!: GetSet<number, this>
+  lineHeight!: GetSet<number, this>
+  text!: GetSet<string, this>
+  textStyles!: GetSet<TextStyle[], this>
+  wrap!: GetSet<'word' | 'char' | 'none', this>
+  ellipsis!: GetSet<boolean, this>
 }
-_registerNode(MultiStyledText)
+
+RichText.prototype._fillFunc = _fillFunc;
+RichText.prototype._strokeFunc = _strokeFunc;
+RichText.prototype.className = RICH_TEXT_UPPER;
+RichText.prototype._attrsAffectingSize = [
+  'text',
+  'fontSize',
+  'padding',
+  'wrap',
+  'lineHeight',
+  'letterSpacing',
+  'textStyles',
+];
+_registerNode(RichText)
 
 /**
  * get/set width of text area, which includes padding.
@@ -507,7 +559,7 @@ _registerNode(MultiStyledText)
  * text.width('auto');
  * text.width() // will return calculated width, and not "auto"
  */
-Factory.overWriteSetter(MultiStyledText, 'width', getNumberOrAutoValidator())
+Factory.overWriteSetter(RichText, 'width', getNumberOrAutoValidator())
 
 /**
  * get/set the height of the text area, which takes into account multi-line text, line heights, and padding.
@@ -526,7 +578,8 @@ Factory.overWriteSetter(MultiStyledText, 'width', getNumberOrAutoValidator())
  * text.height('auto');
  * text.height() // will return calculated height, and not "auto"
  */
-Factory.overWriteSetter(MultiStyledText, 'height', getNumberOrAutoValidator())
+
+Factory.overWriteSetter(RichText, 'height', getNumberOrAutoValidator());
 
 /**
  * get/set padding
@@ -541,7 +594,8 @@ Factory.overWriteSetter(MultiStyledText, 'height', getNumberOrAutoValidator())
  * // set padding to 10 pixels
  * text.padding(10);
  */
-Factory.addGetterSetter(MultiStyledText, 'padding', 0, getNumberValidator())
+
+Factory.addGetterSetter(RichText, 'padding', 0, getNumberValidator())
 
 /**
  * get/set horizontal align of text.  Can be 'left', 'center', 'right' or 'justify'
@@ -559,7 +613,8 @@ Factory.addGetterSetter(MultiStyledText, 'padding', 0, getNumberValidator())
  * // align text to right
  * text.align('right');
  */
-Factory.addGetterSetter(MultiStyledText, 'align', 'left')
+
+Factory.addGetterSetter(RichText, 'align', LEFT)
 
 /**
  * get/set vertical align of text.  Can be 'top', 'middle', 'bottom'.
@@ -574,7 +629,8 @@ Factory.addGetterSetter(MultiStyledText, 'align', 'left')
  * // center text
  * text.verticalAlign('middle');
  */
-Factory.addGetterSetter(MultiStyledText, 'verticalAlign', 'top')
+
+Factory.addGetterSetter(RichText, 'verticalAlign', TOP)
 
 /**
  * get/set line height.  The default is 1.
@@ -589,7 +645,8 @@ Factory.addGetterSetter(MultiStyledText, 'verticalAlign', 'top')
  * // set the line height
  * text.lineHeight(2);
  */
-Factory.addGetterSetter(MultiStyledText, 'lineHeight', 1, getNumberValidator())
+
+Factory.addGetterSetter(RichText, 'lineHeight', 1, getNumberValidator())
 
 /**
  * get/set wrap.  Can be "word", "char", or "none". Default is "word".
@@ -606,7 +663,8 @@ Factory.addGetterSetter(MultiStyledText, 'lineHeight', 1, getNumberValidator())
  * // set wrap
  * text.wrap('word');
  */
-Factory.addGetterSetter(MultiStyledText, 'wrap', 'word')
+
+Factory.addGetterSetter(RichText, 'wrap', WORD)
 
 /**
  * get/set ellipsis. Can be true or false. Default is false. If ellipses is true,
@@ -623,7 +681,8 @@ Factory.addGetterSetter(MultiStyledText, 'wrap', 'word')
  * // set ellipsis
  * text.ellipsis(true);
  */
-Factory.addGetterSetter(MultiStyledText, 'ellipsis', false, getBooleanValidator())
+
+Factory.addGetterSetter(RichText, 'ellipsis', false, getBooleanValidator())
 
 /**
  * set letter spacing property. Default value is 0.
@@ -631,7 +690,8 @@ Factory.addGetterSetter(MultiStyledText, 'ellipsis', false, getBooleanValidator(
  * @method
  * @param {Number} letterSpacing
  */
-Factory.addGetterSetter(MultiStyledText, 'letterSpacing', 0, getNumberValidator())
+
+Factory.addGetterSetter(RichText, 'letterSpacing', 0, getNumberValidator())
 
 /**
  * get/set text
@@ -646,7 +706,8 @@ Factory.addGetterSetter(MultiStyledText, 'letterSpacing', 0, getNumberValidator(
  * // set text
  * text.text('Hello world!');
  */
-Factory.addGetterSetter(MultiStyledText, 'text', '', getStringValidator())
+
+Factory.addGetterSetter(RichText, 'text', '', getStringValidator())
 
 /**
  * get/set textStyles
@@ -662,10 +723,11 @@ const defaultStyle: TextStyle = {
   start: 0,
   fill: 'black',
   stroke: 'black',
+  strokeWidth: 0,
   fontFamily: 'Arial',
   fontSize: 12,
   fontStyle: 'normal',
   fontVariant: 'normal',
   textDecoration: ''
 }
-Factory.addGetterSetter(MultiStyledText, 'textStyles', [defaultStyle])
+Factory.addGetterSetter(RichText, 'textStyles', [defaultStyle])

@@ -123,6 +123,9 @@ declare namespace Konva {
   export const Line: typeof import('./shapes/Line').Line;
   export type Line = import('./shapes/Line').Line;
   export type LineConfig = import('./shapes/Line').LineConfig;
+  export const RichText: typeof import('./shapes/RichText').RichText;
+  export type RichText = import('./shapes/RichText').RichText;
+  export type RichTextConfig = import('./shapes/RichText').RichTextConfig;
   export const Path: typeof import('./shapes/Path').Path;
   export type Path = import('./shapes/Path').Path;
   export type PathConfig = import('./shapes/Path').PathConfig;
