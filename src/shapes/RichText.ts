@@ -498,7 +498,7 @@ export class RichText extends Shape<RichTextConfig> {
 
       context.restore()
       if (typeof this.textLines[lineIndex + 1] !== 'undefined') {
-        y += this.textLines[lineIndex + 1].totalHeight
+        y += (this.textLines[lineIndex].totalHeight / 2) + (this.textLines[lineIndex + 1].totalHeight / 2);
       }
       ++lineIndex
     }
