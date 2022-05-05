@@ -5,10 +5,10 @@
 })(this, (function () { 'use strict';
 
   /*
-   * Konva JavaScript Framework v8.3.2-5
+   * Konva JavaScript Framework v8.3.2-6
    * http://konvajs.org/
    * Licensed under the MIT
-   * Date: Wed Mar 02 2022
+   * Date: Thu May 05 2022
    *
    * Original work Copyright (C) 2011 - 2013 by Eric Rowell (KineticJS)
    * Modified work Copyright (C) 2014 - present by Anton Lavrenov (Konva)
@@ -35,7 +35,7 @@
               : {};
   const Konva$2 = {
       _global: glob,
-      version: '8.3.2-5',
+      version: '8.3.2-6',
       isBrowser: detectBrowser(),
       isUnminified: /param/.test(function (param) { }.toString()),
       dblClickWindow: 400,
@@ -13922,7 +13922,10 @@
                   return size + part.width + part.text.length * this.letterSpacing();
               }, 0);
           };
-          const measureHeightParts = (parts) => {
+          const measureHeightParts = (parts, defaultHeight) => {
+              if (parts.length == 0) {
+                  return defaultHeight;
+              }
               return Math.max(...parts.map((part) => {
                   return part.style.fontSize * this.lineHeight();
               }));
@@ -13945,6 +13948,7 @@
           };
           let currentHeight = 0;
           let charCount = 0;
+          let previousLineHeight = 12;
           for (let line of lines) {
               let lineWidth = measureSubstring(charCount, charCount + line.length);
               let lineHeight;
@@ -13998,7 +14002,7 @@
                           }
                           // match = match.trimRight()
                           const parts = findParts(charCount + cursor, charCount + cursor + low);
-                          lineHeight = measureHeightParts(parts);
+                          lineHeight = measureHeightParts(parts, previousLineHeight);
                           addLine(measureParts(parts), lineHeight, parts);
                           currentHeight += lineHeight;
                           if (!shouldWrap ||
@@ -14031,7 +14035,7 @@
                               lineWidth = measureParts(parts);
                               if (lineWidth <= maxWidth) {
                                   // if it does, add the line and break out of the loop
-                                  const height = measureHeightParts(parts);
+                                  const height = measureHeightParts(parts, previousLineHeight);
                                   addLine(lineWidth, height, parts);
                                   currentHeight += height;
                                   charCount += cursor;
@@ -14047,7 +14051,7 @@
               }
               else {
                   const parts = findParts(charCount, charCount + line.length);
-                  lineHeight = measureHeightParts(parts);
+                  lineHeight = measureHeightParts(parts, previousLineHeight);
                   addLine(lineWidth, lineHeight, parts);
                   currentHeight += lineHeight;
               }
@@ -14057,6 +14061,7 @@
                   break;
               }
               charCount += line.length;
+              previousLineHeight = lineHeight;
           }
           this.linesHeight = this.textLines.reduce((size, line) => size + line.totalHeight, 0);
           this.linesWidth = Math.max(...this.textLines.map((line) => line.width, 0));
@@ -14116,7 +14121,8 @@
               }
               for (const part of line.parts) {
                   // style
-                  if (part.style.textDecoration.includes('underline')) {
+                  let textDecoration = part.style.textDecoration || "";
+                  if (textDecoration.includes('underline')) {
                       context.save();
                       context.beginPath();
                       context.moveTo(lineX, y + lineY + Math.round(part.style.fontSize / 2));
@@ -14133,7 +14139,7 @@
                       context.stroke();
                       context.restore();
                   }
-                  if (part.style.textDecoration.includes('line-through')) {
+                  if (textDecoration.includes('line-through')) {
                       context.save();
                       context.beginPath();
                       context.moveTo(lineX, y + lineY);
@@ -14183,7 +14189,7 @@
               }
               context.restore();
               if (typeof this.textLines[lineIndex + 1] !== 'undefined') {
-                  y += this.textLines[lineIndex + 1].totalHeight;
+                  y += (this.textLines[lineIndex].totalHeight / 2) + (this.textLines[lineIndex + 1].totalHeight / 2);
               }
               ++lineIndex;
           }
