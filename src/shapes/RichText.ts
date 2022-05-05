@@ -416,7 +416,8 @@ export class RichText extends Shape<RichTextConfig> {
       for (const part of line.parts) {
 
         // style
-        if (part.style.textDecoration.includes('underline')) {
+        let textDecoration = part.style.textDecoration || ""
+        if (textDecoration.includes('underline')) {
           context.save();
           context.beginPath()
 
@@ -442,7 +443,7 @@ export class RichText extends Shape<RichTextConfig> {
           context.stroke()
           context.restore()
         }
-        if (part.style.textDecoration.includes('line-through')) {
+        if (textDecoration.includes('line-through')) {
           context.save()
           context.beginPath()
           context.moveTo(lineX, y + lineY)
