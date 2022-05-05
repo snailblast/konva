@@ -202,7 +202,10 @@ export class RichText extends Shape<RichTextConfig> {
         return size + part.width + part.text.length * this.letterSpacing()
       }, 0)
     }
-    const measureHeightParts = (parts: TextPart[]) => {
+    const measureHeightParts = (parts: TextPart[], defaultHeight: number) => {
+      if (parts.length == 0) {
+        return defaultHeight
+      }
       return Math.max(...parts.map((part) => {
         return part.style.fontSize * this.lineHeight()
       }))
@@ -226,6 +229,7 @@ export class RichText extends Shape<RichTextConfig> {
 
     let currentHeight = 0
     let charCount = 0
+    let previousLineHeight = 12;
     for (let line of lines) {
       let lineWidth = measureSubstring(charCount, charCount + line.length)
       let lineHeight: number
@@ -283,7 +287,7 @@ export class RichText extends Shape<RichTextConfig> {
             }
             // match = match.trimRight()
             const parts = findParts(charCount + cursor, charCount + cursor + low)
-            lineHeight = measureHeightParts(parts)
+            lineHeight = measureHeightParts(parts, previousLineHeight)
             addLine(measureParts(parts), lineHeight, parts)
             currentHeight += lineHeight
             if (
@@ -323,7 +327,7 @@ export class RichText extends Shape<RichTextConfig> {
               lineWidth = measureParts(parts)
               if (lineWidth <= maxWidth) {
                 // if it does, add the line and break out of the loop
-                const height = measureHeightParts(parts)
+                const height = measureHeightParts(parts, previousLineHeight)
                 addLine(lineWidth, height, parts)
                 currentHeight += height
                 charCount += cursor;
@@ -337,7 +341,7 @@ export class RichText extends Shape<RichTextConfig> {
         }
       } else {
         const parts = findParts(charCount, charCount + line.length)
-        lineHeight = measureHeightParts(parts)
+        lineHeight = measureHeightParts(parts, previousLineHeight)
         addLine(lineWidth, lineHeight, parts)
         currentHeight += lineHeight;
       }
@@ -349,6 +353,7 @@ export class RichText extends Shape<RichTextConfig> {
       }
 
       charCount += line.length
+      previousLineHeight = lineHeight
     }
 
     this.linesHeight = this.textLines.reduce((size, line) => size + line.totalHeight, 0)
